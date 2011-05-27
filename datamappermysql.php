@@ -62,4 +62,15 @@ class DataMapperMysql implements DataMapperDatabase {
             }
         }
     }
+
+    /**
+     * fetches the schema for the database and parses
+     * it into arrays, then returns that
+     *
+     * @access public
+     * @return array
+     */
+    public function getTableDefinitions() {
+        die(var_dump($this->connection->query("SHOW TABLES")));
+    }
 }
