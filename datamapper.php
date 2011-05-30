@@ -23,7 +23,10 @@
  * @link       http://www.github.com/Fake51/DataMapper
  */
 
-require __DIR__ . '/datamappertable.php';
+require __DIR__ . DIRECTORY_SEPARATOR . 'datamappertable.php';
+require __DIR__ . DIRECTORY_SEPARATOR . 'datamapperbase.php';
+require __DIR__ . DIRECTORY_SEPARATOR . 'datamappermodel.php';
+#require __DIR__ . DIRECTORY_SEPARATOR . 'datamappermapper.php';
 
 /**
  * empty exception class to have own
@@ -52,6 +55,26 @@ interface DataMapperDatabase {
  * @author  Peter Lind <peter.e.lind@gmail.com>
  */
 class DataMapper {
+
+    /**
+     * whether or not to overwrite models
+     * when running runProcess
+     *
+     * defaults to false
+     *
+     * @var bool
+     */
+    protected $overwrite_models = false;
+
+    /**
+     * whether or not to overwrite mappers
+     * when running runProcess
+     *
+     * defaults to true
+     *
+     * @var bool
+     */
+    protected $overwrite_mappers = true;
 
     /**
      * host to connect to
@@ -146,8 +169,8 @@ class DataMapper {
     public function __construct($host, $database, $username, $password = null, $database_type = "mysql") {
         switch (strtolower($database_type)) {
             case 'mysql':
-                include __DIR__ . '/datamappermysql.php';
-                $this->db = new DataMapperMysql($host, $database, $username, $password);
+                include __DIR__ . DIRECTORY_SEPARATOR . 'datamappermysql.php';
+                $this->db = new DataMapperMysql($this, $host, $database, $username, $password);
                 break;
             default:
                 throw new DataMapperException("Only mysql databases supported currently");
@@ -163,8 +186,13 @@ class DataMapper {
      * @return $this
      */
     public function setModelDirectory($directory) {
-        // todo check for write permissions
-        $this->model_directory = $directory;
+        if (!is_string($directory)) {
+            throw new DataMapperException("Path provided to DataMapper::setModelDirectory is not a string, but of type: " . gettype($directory));
+        }
+        if (!is_dir($directory) || !is_writable($directory)) {
+            throw new DataMapperException("Path provided to DataMapper::setModelDirectory does not exist or is not writable");
+        }
+        $this->model_directory = rtrim($directory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
         return $this;
     }
 
@@ -180,6 +208,20 @@ class DataMapper {
         // todo check for write permissions
         $this->mapper_directory = $directory;
         return $this;
+    }
+
+    /**
+     * returns the path to store the mapper classes
+     * in - defaults to the path of the model classes
+     *
+     * @access public
+     * @return string
+     */
+    public function getMapperDirectory() {
+        if (isset($this->mapper_directory)) {
+            return $this->mapper_directory;
+        }
+        return $this->model_directory;
     }
 
     /**
@@ -211,14 +253,30 @@ class DataMapper {
     /**
      * if set to true, will overwrite models
      * otherwise, models won't be created again
+     * default is false
      *
      * @param bool $overwrite_models
      *
      * @access public
      * @return $this
      */
-    public function overwriteModels($overwrite_models) {
-        $this->overwrite_models = !!$bool;
+    public function overwriteModels($overwrite_models = false) {
+        $this->overwrite_models = !!$overwrite_models;
+        return $this;
+    }
+
+    /**
+     * if set to true, will overwrite mappes
+     * otherwise, mappers won't be created again
+     * default is true
+     *
+     * @param bool $overwrite_models
+     *
+     * @access public
+     * @return $this
+     */
+    public function overwriteMappers($overwrite_mappers = true) {
+        $this->overwrite_mappers = !!$overwrite_mappers;
         return $this;
     }
 
@@ -233,6 +291,7 @@ class DataMapper {
      */
     public function setTranslationMode($translation) {
         $this->translation = !!$translation;
+        return $this;
     }
 
     /**
@@ -246,6 +305,7 @@ class DataMapper {
      */
     public function setVerbosityLevel($level) {
         $this->verbosity_level = $level;
+        return $this;
     }
 
     /**
@@ -259,8 +319,41 @@ class DataMapper {
         if (empty($this->model_directory)) {
             throw new DataMapperException("No path to save models to");
         }
+        $this->debug("Data mapper creation process started", 1);
+        $this->model_extend_class = isset($this->model_extend_class) ? $this->model_extend_class : '';
+        $this->debug("Setting Model class extension to: " . $this->model_extend_class, 3);
+        $this->model_prefix = isset($this->model_prefix) ? $this->model_prefix : '';
+        $this->debug("Setting Model prefix to: " . $this->model_prefix, 3);
+        $this->translation = isset($this->translation) ? $this->translation : true;
+        $this->debug("Setting translation mode to: " . ($this->translation ? 'true' : 'false'), 3);
         foreach ($this->db->getTableDefinitions() as $tablename => $definition) {
-            $table = new DataMapperTable($tablename, $definition);
+            $table = new DataMapperTable($this, $tablename, $definition);
+            $table->setModelExtend($this->model_extend_class);
+            $table->setModelPrefix($this->model_prefix);
+            $table->setTranslationMode($this->translation);
+            $this->debug("Creating data mapper for table: {$tablename}", 2);
+            $table->createDataMappers($this->getMapperDirectory(), $this->overwrite_mappers);
+            $this->debug("Data mapper created", 2);
+            $this->debug("Creating data model for table: {$tablename}", 2);
+            $table->createDataModels($this->model_directory, $this->overwrite_models);
+            $this->debug("Data model created", 2);
+        }
+    }
+
+    /**
+     * outputs debug messages based on verbosity level
+     * if provided level is equal to or lower than
+     * the set verbosity level, message is output
+     *
+     * @param string $message
+     * @param int    $level
+     *
+     * @access public
+     * @return void
+     */
+    public function debug($message, $level) {
+        if (intval($level) <= $this->verbosity_level && $this->verbosity_level !== 0) {
+            echo $message . PHP_EOL;
         }
     }
 }

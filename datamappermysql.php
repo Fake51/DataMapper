@@ -39,18 +39,29 @@ class DataMapperMysql implements DataMapperDatabase {
     protected $connection;
 
     /**
+     * instance of the DataMapper class
+     * mainly used here for debugging/output
+     * purposes
+     *
+     * @var DataMapper
+     */
+    protected $datamapper;
+
+    /**
      * constructor
      *
-     * @param string $host
-     * @param string $database
-     * @param string $username
-     * @param string $password
+     * @param DataMapper $datamapper
+     * @param string     $host
+     * @param string     $database
+     * @param string     $username
+     * @param string     $password
      *
      * @throws DataMapperException
      * @access public
      * @return void
      */
-    public function __construct($host, $database, $username, $password = null) {
+    public function __construct(DataMapper $datamapper, $host, $database, $username, $password = null) {
+        $this->datamapper = $datamapper;
         $this->connection = mysqli_init();
         if ($password) {
             if (!$this->connection->real_connect($host, $username, $password, $database)) {
@@ -71,6 +82,38 @@ class DataMapperMysql implements DataMapperDatabase {
      * @return array
      */
     public function getTableDefinitions() {
-        die(var_dump($this->connection->query("SHOW TABLES")));
+        $this->datamapper->debug("Fetching overall table information", 2);
+        $result = $this->connection->query("SHOW TABLES");
+        $info = array();
+        while ($row = $result->fetch_row()) {
+            $tablename = $row[0];
+            $this->datamapper->debug("Fetching table information for table: {$tablename}", 2);
+            $describe_result = $this->connection->query("DESCRIBE `{$tablename}`");
+            $info[$tablename] = $this->parseTableDescription($describe_result);
+            $this->datamapper->debug("Parsed information for table: {$tablename}", 3);
+        }
+        return $info;
+    }
+
+    /**
+     * parses a DESCRIBE query from mysql
+     *
+     * @param MySQLi_Result $result
+     *
+     * @access protected
+     * @return array
+     */
+    protected function parseTableDescription(MySQLi_Result $result) {
+        $columns = array();
+        while ($row = $result->fetch_assoc()) {
+            $columns[$row['Field']] = array(
+                'type'     => strtolower($row['Type']),
+                'null'     => $row['Null'],
+                'key'      => $row['Key'],
+                'default'  => $row['Default'],
+                'extra'    => $row['Extra'],
+            );
+        }
+        return $columns;
     }
 }
