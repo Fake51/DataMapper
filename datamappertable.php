@@ -83,6 +83,22 @@ class DataMapperTable {
     protected $datamapper;
 
     /**
+     * instance of the model class created
+     * for the table
+     *
+     * @var DataMapperModel
+     */
+    protected $model;
+
+    /**
+     * instance of the mapper class created
+     * for the table
+     *
+     * @var DataMapperMapper
+     */
+    protected $apper;
+
+    /**
      * constructor
      *
      * @param string $tablename
@@ -107,6 +123,19 @@ class DataMapperTable {
      * @return void
      */
     public function createDataMappers($path, $overwrite_mappers) {
+        if (!isset($this->model)) {
+            throw new DataMapperException("No model to create DataMapper for");
+        }
+        $info = array(
+            'columns'      => $this->definition,
+            'extends'      => empty($this->model_extends) ? '' : $this->model_extends,
+            'prefix'       => empty($this->model_prefix) ? '' : $this->model_prefix,
+            'translation'  => empty($this->translation) ? false : true,
+            'tablename'    => $this->tablename,
+        );
+        $this->mapper = new DataMapperMapper($this->datamapper, $info, $path, $overwrite_mappers);
+        $this->mapper->setModel($this->model)
+            ->create();
     }
 
     /**
@@ -126,8 +155,8 @@ class DataMapperTable {
             'translation'  => empty($this->translation) ? false : true,
             'tablename'    => $this->tablename,
         );
-        $model = new DataMapperModel($this->datamapper, $info, $path, $overwrite_models);
-        $model->create();
+        $this->model = new DataMapperModel($this->datamapper, $info, $path, $overwrite_models);
+        $this->model->create();
     }
 
     /**

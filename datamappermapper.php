@@ -24,15 +24,15 @@
  */
 
 /**
- * creates templates for model classes
+ * creates templates for mapper classes
  *
  * @package DataMapper
  * @author  Peter Lind <peter.e.lind@gmail.com>
  */
-class DataMapperModel extends DataMapperBase {
+class DataMapperMapper extends DataMapperBase {
 
     /**
-     * creates the model file
+     * creates the mapper file
      *
      * @access public
      * @return void
@@ -79,46 +79,63 @@ class DataMapperModel extends DataMapperBase {
         return <<<PHP
 <?php
 /**
- * Model file created automatically
+ * Mapper file created automatically
  * with DataMapper
  */
 
 class {$this->getClassName(true)}{$extends} {
     /**
-     * instance of datamapper
+     * instance of model
      *
-     * @var DataMapper
+     * @var {$this->getModelClassName()}
      */
-    protected \$datamapper;
+    protected \$model;
 
 
 PHP;
     }
 
     /**
+     * fetches the class name for
+     * the associated model
+     *
+     * @throws DataMapperException
+     * @access protected
+     * @return string
+     */
+    protected function getModelClassName() {
+        if (empty($this->model)) {
+            throw new DataMapperException("No model set for DataMapperMapper");
+        }
+        return $this->model->getClassName();
+    }
+
+    /**
      * creates the construct part of the
-     * model class
+     * mapper class
      *
      * @access protected
      * @return string
      */
     protected function createConstructor() {
+        $model_name = $this->model->getClassName();
+        if (strlen($model_name) > 8) {
+            $resource = str_pad('resource', strlen($model_name), ' ');
+        } else {
+            $resource = 'resource';
+            $model_name = str_pad($model_name, 8, ' ');
+        }
+
+
         $txt = <<<TXT
     /**
      * constructor
      *
-     * @param resource \$database_connection
+     * @param {$resource} \$database_connection
+     * @param {$model_name} \$model
 
 TXT;
-        $params = array('$database_connection');
-        $primary_keys = $this->getPrimaryKeys(); 
-        foreach ($primary_keys as $key) {
-            $params[] = "\$$key = null";
-            $txt .= <<<TXT
-     * @param {$this->getFieldType($key)} \$$key
-
-TXT;
-        }
+        $params = array('$database_connection', '$model');
 
         $param_def = implode(', ', $params);
         $parent_construct = empty($this->info['extends']) ? '' : "parent::__construct();" . PHP_EOL;
@@ -129,47 +146,8 @@ TXT;
      */
     public function __construct({$param_def}) {
         \$this->db = \$database_connection;
+        \$this->model = \$model;
         {$parent_construct}
-
-TXT;
-
-        if (count($params)) {
-            $key_check = '$' . implode(' && $', $primary_keys);
-
-            $txt .= <<<TXT
-        if ({$key_check}) {
-
-TXT;
-            if (count($params == 1) && isset ($this->info['columns']['id'])) {
-                // dealing with normal entity with an id
-                $txt .= <<<TXT
-            if (!\$this->find(\${$primary_keys[0]})) {
-                throw new Exception("Could not load {$this->getClassName()} with ID \${$primary_keys[0]}");
-            }
-
-TXT;
-            } else {
-                $find_data = array();
-                foreach ($primary_keys as $key) {
-                    $find_data[] = "'{$key} = ?' => \${$key}";
-                }
-                $find_string = implode(', ', $find_data);
-
-                $txt .= <<<TXT
-            if (!\$this->findBy(array({$find_string}))) {
-                throw new Exception("Could not load {$this->getClassName()} with provided parameters");
-            }
-
-TXT;
-            }
-
-            $txt .= <<<TXT
-        }
-
-TXT;
-        }
-
-        $txt .= <<<TXT
     }
 
 
@@ -198,6 +176,19 @@ TXT;
     }
 
     /**
+     * sets the model the mapper is for
+     *
+     * @param DataMapperModel $model
+     *
+     * @access public
+     * @return $this
+     */
+    public function setModel(DataMapperModel $model) {
+        $this->model = $model;
+        return $this;
+    }
+
+    /**
      * returns the name of the class
      *
      * @param bool $prefix - return name with prefix
@@ -210,9 +201,9 @@ TXT;
             $classname = preg_replace(array('/(es|s)$/', '/ies$/'), array('', 'y'), $this->info['tablename']);
             preg_match_all('/(s?)_([a-z])/', $classname, $matches, PREG_SET_ORDER);
             foreach ($matches as $match) {
-                $classname = str_replace($match[1] . '_' . $match[2], strtoupper($match[2]), $classname);
+                $classname = str_replace($match[1] . $match[2], strtoupper($match[2]), $classname);
             }
-            $this->classname = ucfirst($classname);
+            $this->classname = ucfirst($classname) . 'Mapper';
         }
         return $prefix ? $this->info['prefix'] . $this->classname : $this->classname;
     }
@@ -225,107 +216,6 @@ TXT;
      */
     public function getClassFilename() {
         return $this->info['translation'] ? $this->getClassName() . '.php' : strtolower($this->getClassName()) . '.php';
-    }
-
-    /**
-     * creates the constructor function for the class
-     *
-     * @access private
-     * @return string
-     */
-    private function _makeConstructor()
-    {
-        $zend_config = $this->_config->getZendConfig();
-
-        $pkeys = $this->_fetchPrimaryKeys();
-        $txt = <<<TXT
-    /**
-     * public constructor
-     *
-
-TXT;
-        $params = array();
-        foreach ($pkeys as $key)
-        {
-            $params[] = "\$$key = null";
-            $txt .= <<<TXT
-     * @param {$this->getFieldType($key)} \$key
-
-TXT;
-        }
-
-        $param_def = implode(', ', $params);
-        $txt .= <<<TXT
-     *
-     * @access public
-     * @return void
-     */
-    public function __construct({$param_def})
-    {
-        parent::__construct();
-
-TXT;
-
-        $zend_config = $this->_config->getZendConfig();
-        if ($zend_config->use_dbtables)
-        {
-            $db_table = new MM_DbTable($this, $this->_config);
-            $txt .= <<<TXT
-        \$this->_db_table = new {$db_table->getClassName()};
-
-TXT;
-        }
-
-        if (count($pkeys))
-        {
-            $key_check = '$' . implode(' && $', $pkeys);
-
-            $txt .= <<<TXT
-        if ({$key_check})
-        {
-
-TXT;
-            if (count($pkeys == 1) && isset ($this->_column_info['id']))
-            {
-                // dealing with normal entity with an id
-                $txt .= <<<TXT
-            if (!\$this->find(\${$pkeys[0]}))
-            {
-                throw new Exception("Could not load {$this->getClassName()} with ID \${$pkeys[0]}");
-            }
-
-TXT;
-            }
-            else
-            {
-                foreach ($pkeys as $key)
-                {
-                    $find_data[] = "'{$key} = ?' => \${$key}";
-                }
-                $find_string = implode(', ', $find_data);
-
-                $txt .= <<<TXT
-            if (!\$this->findBy(array({$find_string})))
-            {
-                throw new Exception("Could not load {$this->getClassName()} with provided parameters");
-            }
-
-TXT;
-            }
-
-            $txt .= <<<TXT
-        }
-
-TXT;
-        }
-
-        $txt .= <<<TXT
-    }
-
-
-TXT;
-
-        return $txt;
     }
 
     /**

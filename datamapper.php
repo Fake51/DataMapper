@@ -26,7 +26,7 @@
 require __DIR__ . DIRECTORY_SEPARATOR . 'datamappertable.php';
 require __DIR__ . DIRECTORY_SEPARATOR . 'datamapperbase.php';
 require __DIR__ . DIRECTORY_SEPARATOR . 'datamappermodel.php';
-#require __DIR__ . DIRECTORY_SEPARATOR . 'datamappermapper.php';
+require __DIR__ . DIRECTORY_SEPARATOR . 'datamappermapper.php';
 
 /**
  * empty exception class to have own
@@ -331,12 +331,12 @@ class DataMapper {
             $table->setModelExtend($this->model_extend_class);
             $table->setModelPrefix($this->model_prefix);
             $table->setTranslationMode($this->translation);
-            $this->debug("Creating data mapper for table: {$tablename}", 2);
-            $table->createDataMappers($this->getMapperDirectory(), $this->overwrite_mappers);
-            $this->debug("Data mapper created", 2);
             $this->debug("Creating data model for table: {$tablename}", 2);
             $table->createDataModels($this->model_directory, $this->overwrite_models);
             $this->debug("Data model created", 2);
+            $this->debug("Creating data mapper for table: {$tablename}", 2);
+            $table->createDataMappers($this->getMapperDirectory(), $this->overwrite_mappers);
+            $this->debug("Data mapper created", 2);
         }
     }
 
