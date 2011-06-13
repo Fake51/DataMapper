@@ -332,8 +332,17 @@ class DataMapperUtil {
             $table->setModelPrefix($this->model_prefix);
             $table->setTranslationMode($this->translation);
             $this->debug("Creating data pair for table: {$tablename}", 2);
-            $table->createDataPair($this->model_directory, $this->mapper_directory, $this->overwrite_models, $this->overwrite_mappers);
+            $table->createDataPair($this->model_directory, $this->getMapperDirectory(), $this->overwrite_models, $this->overwrite_mappers);
             $this->debug("Data pair created", 2);
+        }
+        if ($this->overwrite_mappers) {
+            $this->copyMapperBase();
+        }
+    }
+
+    protected function copyMapperBase() {
+        if (!copy(__DIR__ . $this->db->getMapperBaseTemplatePath(), $this->getMapperDirectory() . 'datamapper.php')) {
+            throw new DataMapperException("Could not copy datamapper base file to mapper directory");
         }
     }
 

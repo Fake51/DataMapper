@@ -30,7 +30,6 @@
  * @author  Peter Lind <peter.e.lind@gmail.com>
  */
 class DataMapperMysql implements DataMapperDatabase {
-
     /**
      * database connection
      *
@@ -115,5 +114,9 @@ class DataMapperMysql implements DataMapperDatabase {
             );
         }
         return $columns;
+    }
+
+    public function getMapperBaseTemplatePath() {
+        return 'datamappertemplatemysql.php';
     }
 }

@@ -246,6 +246,14 @@ class DataMapper {
 SELECT `" . implode('`, `', $this->table_fields) . "` FROM `\$this->tablename` WHERE " . implode(' AND ', $keys);
     }
 
-    public function save() {
+    public function loadFromDB($query) {
+        if (($result = mysql_query($query, $this->db)) && mysql_num_rows($result)) {
+            $this->fillData(mysql_fetch_assoc($result));
+        } else {
+            throw new Exception("Could not load data from query");
+        }
+    }
+
+    public function save(/* args */) {
     }
 }
