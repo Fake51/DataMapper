@@ -78,7 +78,7 @@ class DataMapperTable {
      * mainly used here for debugging/output
      * purposes
      *
-     * @var DataMapper
+     * @var DataMapperUtil
      */
     protected $datamapper;
 
@@ -107,25 +107,13 @@ class DataMapperTable {
      * @access public
      * @return void
      */
-    public function __construct(DataMapper $datamapper, $tablename, array $definition) {
+    public function __construct(DataMapperUtil $datamapper, $tablename, array $definition) {
         $this->datamapper = $datamapper;
         $this->tablename  = $tablename;
         $this->definition = $definition;
     }
 
-    /**
-     * handles creating datamapper classes
-     *
-     * @param string $path
-     * @param bool   $overwrite_mappers
-     *
-     * @access public
-     * @return void
-     */
-    public function createDataMappers($path, $overwrite_mappers) {
-        if (!isset($this->model)) {
-            throw new DataMapperException("No model to create DataMapper for");
-        }
+    public function createDataPair($model_path, $mapper_path, $overwrite_models, $overwrite_mappers) {
         $info = array(
             'columns'      => $this->definition,
             'extends'      => empty($this->model_extends) ? '' : $this->model_extends,
@@ -133,30 +121,13 @@ class DataMapperTable {
             'translation'  => empty($this->translation) ? false : true,
             'tablename'    => $this->tablename,
         );
-        $this->mapper = new DataMapperMapper($this->datamapper, $info, $path, $overwrite_mappers);
-        $this->mapper->setModel($this->model)
-            ->create();
-    }
 
-    /**
-     * handles creating data model classes
-     *
-     * @param string $path
-     * @param bool   $overwrite_mappers
-     *
-     * @access public
-     * @return void
-     */
-    public function createDataModels($path, $overwrite_models) {
-        $info = array(
-            'columns'      => $this->definition,
-            'extends'      => empty($this->model_extends) ? '' : $this->model_extends,
-            'prefix'       => empty($this->model_prefix) ? '' : $this->model_prefix,
-            'translation'  => empty($this->translation) ? false : true,
-            'tablename'    => $this->tablename,
-        );
-        $this->model = new DataMapperModel($this->datamapper, $info, $path, $overwrite_models);
+        $this->mapper = new DataMapperMapper($this->datamapper, $info, $mapper_path, $overwrite_mappers);
+        $this->model = new DataMapperModel($this->datamapper, $info, $model_path, $overwrite_models);
+        $this->mapper->setModel($this->model);
+        $this->model->setMapper($this->mapper);
         $this->model->create();
+        $this->mapper->create();
     }
 
     /**

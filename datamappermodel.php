@@ -32,6 +32,14 @@
 class DataMapperModel extends DataMapperBase {
 
     /**
+     * instance of the data mapper for
+     * creating the model-mapper pair
+     *
+     * @var DataMapperMapper
+     */
+    protected $mapper;
+
+    /**
      * creates the model file
      *
      * @access public
@@ -41,6 +49,19 @@ class DataMapperModel extends DataMapperBase {
         if ($this->createFileCheck()) {
             $this->writeToFile($this->tableInfoToString());
         }
+    }
+
+    /**
+     * sets the model the mapper is for
+     *
+     * @param DataMapperModel $model
+     *
+     * @access public
+     * @return $this
+     */
+    public function setMapper(DataMapperMapper $mapper) {
+        $this->mapper = $mapper;
+        return $this;
     }
 
     /**
@@ -85,11 +106,11 @@ class DataMapperModel extends DataMapperBase {
 
 class {$this->getClassName(true)}{$extends} {
     /**
-     * instance of datamapper
+     * instance of datamapper for class
      *
-     * @var DataMapper
+     * @var {$this->mapper->getClassName()}
      */
-    protected \$datamapper;
+    protected \$mapper;
 
 
 PHP;
@@ -103,47 +124,57 @@ PHP;
      * @return string
      */
     protected function createConstructor() {
+        $type_length = 0;
+        $params = array(
+            '$database_connection' => 'resource',
+            '$mapper'              => $this->mapper->getClassName(),
+        );
+        foreach ($params as $type) {
+            $type_length = strlen($type) > $type_length ? strlen($type) : $type_length;
+        }
+        $primary_keys = $this->getPrimaryKeys(); 
+        $primary_params = array();
+        foreach ($primary_keys as $key) {
+            $field_type = $this->getFieldType($key);
+            $primary_params["\$$key"] = $field_type;
+            $type_length = strlen($field_type) > $type_length ? strlen($field_type) : $type_length;
+        }
+
         $txt = <<<TXT
     /**
      * constructor
      *
-     * @param resource \$database_connection
-
 TXT;
-        $params = array('$database_connection');
-        $primary_keys = $this->getPrimaryKeys(); 
-        foreach ($primary_keys as $key) {
-            $params[] = "\$$key = null";
-            $txt .= <<<TXT
-     * @param {$this->getFieldType($key)} \$$key
-
-TXT;
+        foreach (array_merge($params, $primary_params) as $name => $type) {
+            $txt .= "
+     * @param " . str_pad($type, $type_length, ' ') . " $name";
         }
 
-        $param_def = implode(', ', $params);
-        $parent_construct = empty($this->info['extends']) ? '' : "parent::__construct();" . PHP_EOL;
+        $param_def = implode(', ', array_keys($params)) . ', ' . implode(' = null, ', array_keys($primary_params)) . ' = null';
+        $parent_construct = empty($this->info['extends']) ? '' : "parent::__construct(" . implode(', ', array_keys(array_merge($params, $primary_params))) . ");" . PHP_EOL;
         $txt .= <<<TXT
+
      *
      * @access public
      * @return void
      */
     public function __construct({$param_def}) {
-        \$this->db = \$database_connection;
+        \$this->db     = \$database_connection;
+        \$this->mapper = \$mapper;
         {$parent_construct}
-
 TXT;
 
-        if (count($params)) {
+        if (count($primary_params)) {
             $key_check = '$' . implode(' && $', $primary_keys);
 
             $txt .= <<<TXT
         if ({$key_check}) {
 
 TXT;
-            if (count($params == 1) && isset ($this->info['columns']['id'])) {
+            if (count($primary_params == 1) && isset ($this->info['columns']['id'])) {
                 // dealing with normal entity with an id
                 $txt .= <<<TXT
-            if (!\$this->find(\${$primary_keys[0]})) {
+            if (!\$this->load(\${$primary_keys[0]})) {
                 throw new Exception("Could not load {$this->getClassName()} with ID \${$primary_keys[0]}");
             }
 
@@ -156,7 +187,7 @@ TXT;
                 $find_string = implode(', ', $find_data);
 
                 $txt .= <<<TXT
-            if (!\$this->findBy(array({$find_string}))) {
+            if (!\$this->mapper->load(array({$find_string}))) {
                 throw new Exception("Could not load {$this->getClassName()} with provided parameters");
             }
 
@@ -178,10 +209,62 @@ TXT;
         return $txt;
     }
 
+    /**
+     * creates load and save definitions for the
+     * model class
+     *
+     * @access protected
+     * @return string
+     */
     protected function createIOMethods() {
+        $text = <<<TXT
+    /**
+     * wrapper for call to the datamappers
+     * save method
+     *
+     * @throws Exception
+     * @access public
+     * @return \$this
+     */
+    public function save() {
+        \$this->mapper->save(\$this);
+        return \$this;
     }
 
+    /**
+     * wrapper for call to the datamappers
+     * load method - will take arguments
+     * to the effect of a primary key
+     *
+     * @throws Exception
+     * @access public
+     * @return \$this
+     */
+    public function load(/* args */) {
+        \$args = get_func_args();
+        array_unshift(\$args, \$this);
+        call_user_func_array(array(\$this->mapper, 'load'), \$args);
+        return \$this;
+    }
+
+TXT;
+
+        return $text;
+    }
+
+    /**
+     * returns crud for the end of the
+     * model class
+     *
+     * @access protected
+     * @return string
+     */
     protected function createFooterCrud() {
+        $txt = <<<TXT
+}
+
+TXT;
+        return $txt;
     }
 
     /**

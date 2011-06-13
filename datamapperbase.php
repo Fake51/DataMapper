@@ -14,7 +14,7 @@ class DataMapperBase {
      * mainly used here for debugging/output
      * purposes
      *
-     * @var DataMapper
+     * @var DataMapperUtil
      */
     protected $datamapper;
 
@@ -33,11 +33,11 @@ class DataMapperBase {
     protected $overwrite;
 
     /**
-     * path to create model files in
+     * path to create files in
      *
      * @var string
      */
-    protected $model_path;
+    protected $path;
 
     /**
      * constructor
@@ -50,7 +50,7 @@ class DataMapperBase {
      * @access public
      * @return void
      */
-    public function __construct(DataMapper $datamapper, array $info, $path, $overwrite) {
+    public function __construct(DataMapperUtil $datamapper, array $info, $path, $overwrite) {
         $this->datamapper = $datamapper;
         $this->info       = $info;
         $this->path       = $path;

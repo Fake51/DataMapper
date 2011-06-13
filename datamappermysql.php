@@ -43,7 +43,7 @@ class DataMapperMysql implements DataMapperDatabase {
      * mainly used here for debugging/output
      * purposes
      *
-     * @var DataMapper
+     * @var DataMapperUtil
      */
     protected $datamapper;
 
@@ -60,7 +60,7 @@ class DataMapperMysql implements DataMapperDatabase {
      * @access public
      * @return void
      */
-    public function __construct(DataMapper $datamapper, $host, $database, $username, $password = null) {
+    public function __construct(DataMapperUtil $datamapper, $host, $database, $username, $password = null) {
         $this->datamapper = $datamapper;
         $this->connection = mysqli_init();
         if ($password) {
