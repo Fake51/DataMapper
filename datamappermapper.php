@@ -50,7 +50,7 @@ class DataMapperMapper extends DataMapperBase {
      * @return void
      */
     protected function writeToFile($definition) {
-        if (file_put_contents($this->getClassFilename(), $definition) === false) {
+        if (file_put_contents($this->path . $this->getClassFilename(), $definition) === false) {
             throw new DataMapperException("Failed to write class to file");
         }
     }
