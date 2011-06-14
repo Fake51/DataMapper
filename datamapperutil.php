@@ -341,7 +341,7 @@ class DataMapperUtil {
     }
 
     protected function copyMapperBase() {
-        if (!copy(__DIR__ . $this->db->getMapperBaseTemplatePath(), $this->getMapperDirectory() . 'datamapper.php')) {
+        if (!copy(__DIR__ . '/' . $this->db->getMapperBaseTemplatePath(), $this->getMapperDirectory() . 'datamapper.php')) {
             throw new DataMapperException("Could not copy datamapper base file to mapper directory");
         }
     }
