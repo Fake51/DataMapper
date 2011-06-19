@@ -148,7 +148,7 @@ class DataMapper {
      * @return void
      */
     protected function processLoadArgsResult(MySQLi_Result $result) {
-        if (!$result->num_rows()) {
+        if (!$result->num_rows) {
             throw new Exception("Resource contained no data for loading object");
         }
         $this->processLoadArgsArray($result->fetch_assoc());
@@ -247,7 +247,7 @@ SELECT `" . implode('`, `', $this->table_fields) . "` FROM `{$this->table_name}`
     }
 
     public function loadFromDB($query) {
-        if (($result = $this->db->query($query)) && $result->num_rows()) {
+        if (($result = $this->db->query($query)) && $result->num_rows) {
             $this->fillData($result->fetch_assoc());
         } else {
             throw new Exception("Could not load data from query");
