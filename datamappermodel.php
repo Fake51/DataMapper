@@ -241,7 +241,7 @@ TXT;
      * @return \$this
      */
     public function load(/* args */) {
-        \$args = get_func_args();
+        \$args = func_get_args();
         array_unshift(\$args, \$this);
         call_user_func_array(array(\$this->mapper, 'load'), \$args);
         return \$this;
