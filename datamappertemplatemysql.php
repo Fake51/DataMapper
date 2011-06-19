@@ -242,7 +242,7 @@ class DataMapper {
             }
             $keys[] = "`$key` = '" . mysql_real_escape_string($args[$key], $this->db) . "'";
         }
-        $query = "
+        return "
 SELECT `" . implode('`, `', $this->table_fields) . "` FROM `\$this->tablename` WHERE " . implode(' AND ', $keys);
     }
 
