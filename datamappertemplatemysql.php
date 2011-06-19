@@ -44,6 +44,13 @@ class DataMapper {
      */
     protected $data;
 
+    /** 
+     * model the datamapper is for
+     *
+     * @var object
+     */
+    protected $model;
+
     /**
      * constructor
      *
@@ -266,7 +273,7 @@ SELECT `" . implode('`, `', $this->table_fields) . "` FROM `{$this->table_name}`
             if (!isset($data[$field])) {
                 throw new Exception("{$field} is not set in data provided to DataMapper::fillData");
             }
-            $this->data[$field] = $data[$field];
+            $this->model->$field = $this->data[$field] = $data[$field];
         }
     }
 
