@@ -96,13 +96,6 @@ class {$this->getClassName(true)} extends DataMapper {
     protected \$table_name = '{$this->info['tablename']}';
 
     /**
-     * data storage
-     *
-     * @var array
-     */
-    protected \$data;
-
-    /**
      * fields of associated table
      *
      * @var array

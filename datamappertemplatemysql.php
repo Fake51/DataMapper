@@ -38,6 +38,13 @@ class DataMapper {
     protected $db;
 
     /**
+     * data storages
+     *
+     * @var array
+     */
+    protected $data;
+
+    /**
      * constructor
      *
      * @param resource $database_connection
@@ -251,6 +258,15 @@ SELECT `" . implode('`, `', $this->table_fields) . "` FROM `{$this->table_name}`
             $this->fillData(mysql_fetch_assoc($result));
         } else {
             throw new Exception("Could not load data from query");
+        }
+    }
+
+    protected function fillData(array $data) {
+        foreach ($this->getTableFields() as $field) {
+            if (!isset($data[$field])) {
+                throw new Exception("{$field} is not set in data provided to DataMapper::fillData");
+            }
+            $this->data[$field] = $data[$field];
         }
     }
 
