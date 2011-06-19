@@ -24,7 +24,7 @@
  */
 
 /**
- * DataMapper mysql template
+ * DataMapper mysqli template
  *
  * @package DataMapper
  * @author  Peter Lind <peter.e.lind@gmail.com>
@@ -96,10 +96,10 @@ class DataMapper {
             } else {
                 $this->processLoadArgsArray($args[0]);
             }
+        } elseif ($args[0] instanceof MySQLi_Result) {
+            $this->processLoadArgsResult($args[0]);
         } elseif (is_object($args[0])) {
             $this->processLoadArgsObject($args[0]);
-        } elseif (is_resource($args[0])) {
-            $this->processLoadArgsResource($args[0]);
         } else {
             throw new Exception("Could not make sense of arguments for DataMapper::load()");
         }
@@ -140,18 +140,18 @@ class DataMapper {
 
     /**
      * process load arguments based
-     * on a mysql resource
+     * on a mysqli result
      *
-     * @param resource $resource
+     * @param MySQLi_Result $result
      *
      * @access protected
      * @return void
      */
-    protected function processLoadArgsResource($resource) {
-        if (!mysql_num_rows($resource)) {
+    protected function processLoadArgsResult(MySQLi_Result $result) {
+        if (!$result->num_rows()) {
             throw new Exception("Resource contained no data for loading object");
         }
-        $this->processLoadArgsArray(mysql_fetch_assoc($resource));
+        $this->processLoadArgsArray($result->fetch_assoc());
     }
 
     /**
@@ -240,15 +240,15 @@ class DataMapper {
             if (!isset($args[$key])) {
                 throw new Exception("Lacking value for field $key");
             }
-            $keys[] = "`$key` = '" . mysql_real_escape_string($args[$key], $this->db) . "'";
+            $keys[] = "`$key` = '{$this->db->real_escape_string($args[$key])}'";
         }
         $query = "
 SELECT `" . implode('`, `', $this->table_fields) . "` FROM `\$this->tablename` WHERE " . implode(' AND ', $keys);
     }
 
     public function loadFromDB($query) {
-        if (($result = mysql_query($query, $this->db)) && mysql_num_rows($result)) {
-            $this->fillData(mysql_fetch_assoc($result));
+        if (($result = $this->db->query($query)) && $result->num_rows()) {
+            $this->fillData($result->fetch_assoc());
         } else {
             throw new Exception("Could not load data from query");
         }

@@ -29,7 +29,7 @@
  * @package DataMapper
  * @author  Peter Lind <peter.e.lind@gmail.com>
  */
-class DataMapperMysql implements DataMapperDatabase {
+class DataMapperMysqli implements DataMapperDatabase {
     /**
      * database connection
      *

@@ -169,11 +169,12 @@ class DataMapperUtil {
     public function __construct($host, $database, $username, $password = null, $database_type = "mysql") {
         switch (strtolower($database_type)) {
             case 'mysql':
-                include __DIR__ . DIRECTORY_SEPARATOR . 'datamappermysql.php';
-                $this->db = new DataMapperMysql($this, $host, $database, $username, $password);
+            case 'mysqli':
+                include __DIR__ . DIRECTORY_SEPARATOR . 'datamappermysqli.php';
+                $this->db = new DataMapperMysqli($this, $host, $database, $username, $password);
                 break;
             default:
-                throw new DataMapperException("Only mysql databases supported currently");
+                throw new DataMapperException("Database type {$database_type} not currently supported");
         }
     }
 
