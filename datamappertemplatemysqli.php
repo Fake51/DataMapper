@@ -243,7 +243,7 @@ class DataMapper {
             $keys[] = "`$key` = '{$this->db->real_escape_string($args[$key])}'";
         }
         return "
-SELECT `" . implode('`, `', $this->table_fields) . "` FROM `\$this->tablename` WHERE " . implode(' AND ', $keys);
+SELECT `" . implode('`, `', $this->table_fields) . "` FROM `{$this->table_name}` WHERE " . implode(' AND ', $keys);
     }
 
     public function loadFromDB($query) {
