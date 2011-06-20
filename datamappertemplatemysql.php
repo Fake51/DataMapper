@@ -99,7 +99,7 @@ class DataMapper {
         if (count($args) < 2) {
             throw new Exception("Lacking data to load object with");
         }
-        $model = array_shift($args);
+        $this->model = array_shift($args);
         if (count($args) > 1 || is_scalar($args[0])) {
             // rest of the arguments should be values for
             // primary keys to load
