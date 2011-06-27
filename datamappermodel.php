@@ -222,7 +222,6 @@ TXT;
      * wrapper for call to the datamappers
      * save method
      *
-     * @throws Exception
      * @access public
      * @return \$this
      */
@@ -233,10 +232,21 @@ TXT;
 
     /**
      * wrapper for call to the datamappers
+     * delete method
+     *
+     * @access public
+     * @return \$this
+     */
+    public function delete() {
+        \$this->mapper->delete(\$this);
+        return \$this;
+    }
+
+    /**
+     * wrapper for call to the datamappers
      * load method - will take arguments
      * to the effect of a primary key
      *
-     * @throws Exception
      * @access public
      * @return \$this
      */
