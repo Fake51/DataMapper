@@ -227,7 +227,7 @@ TXT;
             $classname = preg_replace(array('/(es|s)$/', '/ies$/'), array('', 'y'), $this->info['tablename']);
             preg_match_all('/(s?)_([a-z])/', $classname, $matches, PREG_SET_ORDER);
             foreach ($matches as $match) {
-                $classname = str_replace($match[1] . $match[2], strtoupper($match[2]), $classname);
+                $classname = str_replace($match[1] . '_' . $match[2], strtoupper($match[2]), $classname);
             }
             $this->classname = ucfirst($classname) . 'Mapper';
         }
