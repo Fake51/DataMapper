@@ -365,6 +365,9 @@ SELECT `" . implode('`, `', $this->table_fields) . "` FROM `{$this->table_name}`
                 $this->data[$field] = $this->model->$field;
             }
         }
+        if (empty($updates)) {
+            return;
+        }
         $query = "UPDATE `{$this->table_name}` SET " . implode(", ", $updates) . " WHERE {$this->generatePrimaryKeyClause()}";
         if (!$this->db->query($query)) {
             throw new Exception("Failed to update table: {$this->table_name}");
@@ -398,6 +401,9 @@ SELECT `" . implode('`, `', $this->table_fields) . "` FROM `{$this->table_name}`
                 $inserts[] = "`{$field}` = '{$this->db->real_escape_string($this->model->$field)}'";
                 $this->data[$field] = $this->model->$field;
             }
+        }
+        if (empty($inserts)) {
+            throw new Exception("Nothing to insert");
         }
         $query = "INSERT INTO `{$this->table_name}` SET " . implode(", ", $inserts);
         if (!$this->db->query($query)) {
