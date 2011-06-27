@@ -119,6 +119,15 @@ class DataMapper {
         }
     }
 
+    /**
+     * checks if the array provided is a
+     * numeric or associative array
+     *
+     * @param array $args
+     *
+     * @access protected
+     * @return bool
+     */
     protected function isNumericArgs(array $args) {
         foreach ($args as $key => $value) {
             if (!(intval($key) || $key === 0)) {
@@ -260,6 +269,15 @@ class DataMapper {
 SELECT `" . implode('`, `', $this->table_fields) . "` FROM `{$this->table_name}` WHERE " . implode(' AND ', $keys);
     }
 
+    /**
+     * load data from database using given query
+     *
+     * @param string $query
+     *
+     * @throws Exception
+     * @access public
+     * @return void
+     */
     public function loadFromDB($query) {
         if (($result = mysql_query($query, $this->db)) && mysql_num_rows($result)) {
             $this->fillData(mysql_fetch_assoc($result));
@@ -268,7 +286,20 @@ SELECT `" . implode('`, `', $this->table_fields) . "` FROM `{$this->table_name}`
         }
     }
 
+    /**
+     * loads data from provided array and sets it
+     * locally and in the model as well
+     *
+     * @param array
+     *
+     * @throws Exception
+     * @access protected
+     * @return void
+     */
     protected function fillData(array $data) {
+        if (empty($this->model)) {
+            throw new Exception("Model not set");
+        }
         foreach ($this->getTableFields() as $field) {
             if (!isset($data[$field])) {
                 throw new Exception("{$field} is not set in data provided to DataMapper::fillData");
@@ -277,6 +308,145 @@ SELECT `" . implode('`, `', $this->table_fields) . "` FROM `{$this->table_name}`
         }
     }
 
-    public function save(/* args */) {
+    /**
+     * saves the data for the model, either as an
+     * insert or as an update, depending upon whether
+     * primary key data was set from the start
+     *
+     * @param object $model
+     *
+     * @throws Exception
+     * @access public
+     * @return void
+     */
+    public function save($model) {
+        $insert = false;
+        if (empty($this->model)) {
+            $this->model = $model;
+            $insert = true;
+        }
+        // todo: handle many-to-many tables
+        foreach ($this->getPrimaryKeys() as $key) {
+            if (!isset($this->data[$key])) {
+                $insert = true;
+            }
+        }
+        if (!$insert) {
+            // update: set all fields but primary keys
+            $this->doUpdate();
+        } else {
+            // insert: set all fields but primary keys if autocreate, otherwise also set primary keys
+            $this->doInsert();
+        }
+    }
+
+    /**
+     * creates and runs an update query
+     *
+     * @throws Exception
+     * @access protected
+     * @return void
+     */
+    protected function doUpdate() {
+        $pks = $this->getPrimaryKeys();
+        $updates = array();
+        foreach ($this->getTableFields() as $field) {
+            if (in_array($field, $pks) || (!isset($this->model->$field) && !isset($this->data[$field]))) {
+                // field is a primary key, or isn't set in model and mapper
+                continue;
+            }
+            if ((!isset($this->model->$field) || is_null($this->model->$field)) && isset($this->data[$field])) {
+                // field has been set to null after loading
+                $updates[] = "`{$field}` = NULL";
+                $this->data[$field] = null;
+            } elseif (isset($this->model->$field) && (!isset($this->data[$field]) || $this->model->$field != $this->data[$field])) {
+                // field was updated after loading
+                $updates[] = "`{$field}` = '" . mysql_real_escape_string($this->model->$field, $this->db) . "'";
+                $this->data[$field] = $this->model->$field;
+            }
+        }
+        $query = "UPDATE `{$this->table_name}` SET " . implode(", ", $updates) . " WHERE {$this->generatePrimaryKeyClause()}";
+        if (!mysql_query($query, $this->db)) {
+            throw new Exception("Failed to update table: {$this->table_name}");
+        }
+    }
+
+    /**
+     * creates and runs an insert query
+     *
+     * @throws Exception
+     * @access protected
+     * @return void
+     */
+    protected function doInsert() {
+        $pks = array_flip($this->getPrimaryKeys());
+        $inserts = array();
+        foreach ($this->getTableFields() as $field) {
+            if (isset($pks[$field]) && $this->auto_primary_key) {
+                continue;
+            }
+            if (isset($pks[$field]) && !$this->auto_primary_key) {
+                if (!isset($this->model->$field)) {
+                    throw new Exception("Primary key is not auto created for model, but no data for primary key is set in model");
+                }
+                $inserts[] = "`{$field}` = '" . mysql_real_escape_string($this->model->$field, $this->db) . "'";
+                $this->data[$field] = $this->model->$field;
+            } elseif (!isset($this->model->$field)) {
+                $inserts[] = "`{$field}` = NULL";
+                $this->data[$field] = null;
+            } else {
+                $inserts[] = "`{$field}` = '" . mysql_real_escape_string($this->model->$field, $this->db) . "'";
+                $this->data[$field] = $this->model->$field;
+            }
+        }
+        $query = "INSERT INTO `{$this->table_name}` SET " . implode(", ", $inserts);
+        if (!mysql_query($query, $this->db)) {
+            throw new Exception("Failed to insert data into table: {$this->table_name}");
+        }
+        // todo: improve to handle multiple rows
+        if ($this->auto_primary_key) {
+            foreach ($this->getPrimaryKeys() as $key) {
+                $this->model->$key = $this->data[$key] = mysql_insert_id($this->db);
+            }
+        }
+    }
+
+    /**
+     * deletes data for a model
+     *
+     * @param object $model
+     *
+     * @throws Exception
+     * @access public
+     * @return void
+     */
+    public function delete($model) {
+        $query = "DELETE FROM `{$this->table_name}` WHERE {$this->generatePrimaryKeyClause()} LIMIT 1";
+        if (!mysql_query($query, $this->db)) {
+            throw new Exception("Failed to delete row in table: {$this->table_name}");
+        }
+        foreach ($this->getTableFields as $field) {
+            $model->$field = null;
+        }
+        $this->data = array();
+    }
+
+    /**
+     * generates a WHERE clause with the primary
+     * keys of the model
+     *
+     * @throws Exception
+     * @access public
+     * @return string
+     */
+    public function generatePrimaryKeyClause() {
+        $keys = array();
+        foreach ($this->getPrimaryKeys() as $key) {
+            if (!isset($this->data[$key])) {
+                throw new Exception("Model was not loaded prior to deletion");
+            }
+            $keys[] = "`{$key}` = '" . mysql_real_escape_string($this->data[$key], $this->db) . "'";
+        }
+        return implode(" AND ", $keys);
     }
 }

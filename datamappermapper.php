@@ -109,6 +109,12 @@ class {$this->getClassName(true)} extends DataMapper {
      */
     protected \$primary_keys = array({$this->getPrimaryKeysString()});
 
+    /**
+     * whether primary key is auto-created on insertion
+     *
+     * @var bool
+     */
+    protected \$auto_primary_key = {$this->primaryKeyAutoCreatedString()};
 
 PHP;
     }
@@ -126,6 +132,23 @@ PHP;
 
 TXT;
         return $txt;
+    }
+
+    /**
+     * returns true if primary key is auto created
+     * in database (f.g. auto_increment in mysql)
+     *
+     * @access protected
+     * @return string
+     */
+    protected function primaryKeyAutoCreatedString() {
+        $auto_created = true;
+        foreach ($this->getPrimaryKeys() as $key) {
+            if (strtolower($this->info['columns'][$key]['extra']) !== 'auto_increment') {
+                $auto_created = false;
+            }
+        }
+        return $auto_created ? 'true' : 'false';
     }
 
     /**
